@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../lib/generated/prisma';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -123,9 +123,10 @@ async function main() {
   ];
 
   for (const customer of customers) {
-    await prisma.customer.create({
-      data: customer,
-    });
+    const exists = await prisma.customer.findFirst({ where: { gstin: customer.gstin } });
+    if (!exists) {
+      await prisma.customer.create({ data: customer });
+    }
   }
 
   // console.log('✅ Sample customers created');
@@ -135,35 +136,27 @@ async function main() {
     {
       hsn_code: '7113',
       description: 'Gold Jewellery',
-      cgst_rate: 1.5,
-      sgst_rate: 1.5,
-      igst_rate: 3.0,
       is_default: true,
     },
     {
       hsn_code: '7114',
       description: 'Silver Jewellery',
-      cgst_rate: 1.5,
-      sgst_rate: 1.5,
-      igst_rate: 3.0,
       is_default: false,
     },
     {
       hsn_code: '7116',
       description: 'Precious Stone Jewellery',
-      cgst_rate: 1.5,
-      sgst_rate: 1.5,
-      igst_rate: 3.0,
       is_default: false,
     },
   ];
 
   for (const taxRate of taxRates) {
-    await prisma.taxRate.upsert({
+    const existing = await prisma.taxRate.findFirst({
       where: { hsn_code: taxRate.hsn_code },
-      update: {},
-      create: taxRate,
     });
+    if (!existing) {
+      await prisma.taxRate.create({ data: taxRate });
+    }
   }
 
   // console.log('✅ Tax rates created');

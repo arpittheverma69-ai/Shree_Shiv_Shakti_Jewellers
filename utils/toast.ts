@@ -7,6 +7,7 @@ const defaultOptions: ToastOptions = {
     closeOnClick: true,
     pauseOnHover: true,
     draggable: true,
+    pauseOnFocusLoss: false,
 };
 
 export const showToast = {
@@ -27,7 +28,7 @@ export const showToast = {
     },
 
     loading: (message: string, options?: ToastOptions) => {
-        return toast.loading(message, { ...defaultOptions, ...options });
+        return toast.loading(message, { ...defaultOptions, autoClose: false, closeOnClick: false, draggable: false, ...options });
     },
 
     // Update a loading toast to success/error
@@ -36,6 +37,9 @@ export const showToast = {
             render: message,
             type,
             isLoading: false,
+            autoClose: 4000,
+            closeOnClick: true,
+            draggable: true,
             ...defaultOptions,
             ...options
         });

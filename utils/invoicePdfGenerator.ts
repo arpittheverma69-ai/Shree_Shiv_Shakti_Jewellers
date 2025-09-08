@@ -466,15 +466,31 @@ export const downloadInvoicePDF = async (data: InvoicePdfData & { cgstRate?: num
     if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-
-        // Wait for content to load then trigger print
-        // printWindow.onload = () => {
-        //     setTimeout(() => {
-        //         printWindow.print();
-        //         printWindow.close();
-        //     }, 500);
-        // };
+    } else {
+        // Fallback to download as .html file if popup blocked
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Invoice_${data.invoiceData.invoice_number || 'invoice'}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
+};
+
+export const downloadInvoiceHTMLFile = async (data: InvoicePdfData & { cgstRate?: number; sgstRate?: number; globalRoundoff?: number; copies?: string[]; shopProfile: ShopProfile }) => {
+    const htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${data.invoiceData.invoice_number || 'invoice'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 
 export const generatePDFBlob = async (data: InvoicePdfData & { cgstRate?: number; sgstRate?: number; globalRoundoff?: number; copies?: string[]; shopProfile: ShopProfile }): Promise<Blob> => {
