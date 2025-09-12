@@ -85,6 +85,9 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
         const fetchInvoiceNumber = async () => {
             if (!invoiceData.type) return;
 
+            // Skip fetching if we already have an invoice number (edit mode)
+            if (invoiceData.invoice_number) return;
+
             // Skip if we already have an invoice number for this type
             if (fetchedInvoiceNumbers.current[invoiceData.type]) {
                 updateInvoiceData({ invoice_number: fetchedInvoiceNumbers.current[invoiceData.type] });
