@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { PrismaClient } from "@/lib/generated/prisma";
+
+// Create a separate base Prisma client for hard deletes
+const basePrisma = new PrismaClient();
 
 export async function GET(
   request: NextRequest,
@@ -195,9 +199,36 @@ export async function DELETE(
     const { id: idParam } = await params;
     const id = parseInt(idParam);
 
-    // Soft delete the invoice (this will automatically set deletedAt due to Prisma extension)
-    await prisma.invoice.delete({
-      where: { id },
+    // Hard delete the invoice and all related data using base Prisma client
+    await basePrisma.$transaction(async (tx) => {
+      // First, get all line items for this invoice
+      const lineItems = await tx.lineItem.findMany({
+        where: { invoice_id: id },
+        select: { id: true }
+      });
+
+      const lineItemIds = lineItems.map(item => item.id);
+
+      // Delete line item taxes first (using line item IDs)
+      if (lineItemIds.length > 0) {
+        await tx.lineItemTax.deleteMany({
+          where: {
+            line_item_id: {
+              in: lineItemIds
+            }
+          }
+        });
+      }
+
+      // Delete line items
+      await tx.lineItem.deleteMany({
+        where: { invoice_id: id }
+      });
+
+      // Finally delete the invoice
+      await tx.invoice.delete({
+        where: { id }
+      });
     });
 
     return NextResponse.json({ message: "Invoice deleted successfully" });

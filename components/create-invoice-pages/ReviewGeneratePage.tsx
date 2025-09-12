@@ -21,9 +21,10 @@ import {
     DollarSign,
     Receipt,
     Clock,
-    Shield
+    Shield,
+    Plus
 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useShopProfile } from '@/contexts/ShopProfileContext';
 
 interface ReviewGeneratePageProps {
@@ -39,6 +40,7 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
     globalRoundoff,
     prevStep,
 }) => {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { shopProfile } = useShopProfile();
     const editId = searchParams.get('edit');
@@ -96,6 +98,7 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                 copies: selectedCopyTypes,
                 shopProfile
             };
+
             await downloadInvoicePDF(pdfData);
             showToast.success('PDF generated and download started!');
         } catch (error) {
@@ -184,14 +187,14 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                 const msg = contentType.includes('application/json') ? (await response.json()).error : await response.text();
                 throw new Error(msg || 'Failed to submit invoice');
             }
-
             const result = await response.json();
 
             showToast.update(toastId, 'success', `${isEdit ? 'Invoice updated' : 'Invoice submitted'} successfully!`);
             setIsSubmitting(false);
+            await handleGeneratePDF();
 
             // Optionally redirect to invoices list or reset form
-            // window.location.href = '/dashboard/all-invoice';
+            // window.location.href = '/dashboard/all-invoice';  
 
         } catch (error) {
             console.error('Error submitting invoice:', error);
@@ -456,19 +459,6 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
 
                         <div className="p-4 space-y-3">
                             <button
-                                onClick={handleGeneratePDF}
-                                disabled={isGenerating}
-                                className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-primary/90 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isGenerating ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <Download className="w-4 h-4" />
-                                )}
-                                {isGenerating ? 'Generating...' : 'Generate PDF'}
-                            </button>
-
-                            <button
                                 onClick={handleSubmitInvoice}
                                 disabled={isSubmitting}
                                 className="w-full bg-green-600 text-white py-3 px-4 rounded-[16px] font-medium hover:bg-green-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -484,6 +474,26 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                             <button className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center justify-center gap-2">
                                 <Share2 className="w-4 h-4" />
                                 Share Invoice
+                            </button>
+                            <button
+                                onClick={handleGeneratePDF}
+                                disabled={isGenerating}
+                                className="w-full bg-orange-400 text-primary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-orange-400/90 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isGenerating ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <Download className="w-4 h-4" />
+                                )}
+                                {isGenerating ? 'Generating...' : 'Generate PDF'}
+                            </button>
+                            <button
+                                id="createInvoiceBtn"
+                                onClick={() => router.push('/dashboard/create-invoice')}
+                                className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-primary/90 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                                <span>Create New Invoice</span>
                             </button>
                         </div>
                     </div>

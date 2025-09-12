@@ -4,7 +4,7 @@ const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClient | undefined;
 };
 
-const basePrisma = globalForPrisma.prisma ?? new PrismaClient();
+export const basePrisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = basePrisma;
 
@@ -40,16 +40,16 @@ const prisma = basePrisma.$extends({
             async findMany({ args, query, model }: { args: any; query: any; model: string }) {
                 // Only apply soft delete filter to models that have deletedAt field
                 const modelsWithSoftDelete = ['BusinessProfile', 'Customer', 'Invoice', 'LineItem', 'LineItemTax', 'TaxRate', 'User'];
-                
+
                 if (!modelsWithSoftDelete.includes(model)) {
                     return query(args);
                 }
-                
+
                 // If deletedAt is explicitly specified in the query, respect it
                 if (args.where?.deletedAt !== undefined) {
                     return query(args);
                 }
-                
+
                 // Otherwise, exclude soft deleted records
                 return query({
                     ...args,
@@ -64,16 +64,16 @@ const prisma = basePrisma.$extends({
             async findFirst({ args, query, model }: { args: any; query: any; model: string }) {
                 // Only apply soft delete filter to models that have deletedAt field
                 const modelsWithSoftDelete = ['BusinessProfile', 'Customer', 'Invoice', 'LineItem', 'LineItemTax', 'TaxRate', 'User'];
-                
+
                 if (!modelsWithSoftDelete.includes(model)) {
                     return query(args);
                 }
-                
+
                 // If deletedAt is explicitly specified in the query, respect it
                 if (args.where?.deletedAt !== undefined) {
                     return query(args);
                 }
-                
+
                 // Otherwise, exclude soft deleted records
                 return query({
                     ...args,
@@ -88,16 +88,16 @@ const prisma = basePrisma.$extends({
             async findUnique({ args, query, model }: { args: any; query: any; model: string }) {
                 // Only apply soft delete filter to models that have deletedAt field
                 const modelsWithSoftDelete = ['BusinessProfile', 'Customer', 'Invoice', 'LineItem', 'LineItemTax', 'TaxRate', 'User'];
-                
+
                 if (!modelsWithSoftDelete.includes(model)) {
                     return query(args);
                 }
-                
+
                 // If deletedAt is explicitly specified in the query, respect it
                 if (args.where?.deletedAt !== undefined) {
                     return query(args);
                 }
-                
+
                 // Otherwise, exclude soft deleted records
                 return query({
                     ...args,
@@ -112,16 +112,16 @@ const prisma = basePrisma.$extends({
             async count({ args, query, model }: { args: any; query: any; model: string }) {
                 // Only apply soft delete filter to models that have deletedAt field
                 const modelsWithSoftDelete = ['BusinessProfile', 'Customer', 'Invoice', 'LineItem', 'LineItemTax', 'TaxRate', 'User'];
-                
+
                 if (!modelsWithSoftDelete.includes(model)) {
                     return query(args);
                 }
-                
+
                 // If deletedAt is explicitly specified in the query, respect it
                 if (args.where?.deletedAt !== undefined) {
                     return query(args);
                 }
-                
+
                 // Otherwise, exclude soft deleted records
                 return query({
                     ...args,
