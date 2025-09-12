@@ -12,6 +12,7 @@ interface InvoiceDetailsPageProps {
     selectedCustomer: (data: Partial<Customer>) => void;
     nextStep: () => void;
     states: State[];
+    isEdit: boolean;
 }
 
 const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
@@ -20,6 +21,7 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
     selectedCustomer,
     nextStep,
     states,
+    isEdit
 }) => {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [customers, setCustomers] = useState<Customer[]>();
@@ -86,7 +88,7 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
             if (!invoiceData.type) return;
 
             // Skip fetching if we already have an invoice number (edit mode)
-            if (invoiceData.invoice_number) return;
+            if (isEdit) return;
 
             // Skip if we already have an invoice number for this type
             if (fetchedInvoiceNumbers.current[invoiceData.type]) {
@@ -112,8 +114,6 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
         };
 
         fetchInvoiceNumber();
-        // Remove updateInvoiceData from dependencies to prevent infinite loops
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invoiceData.type])
 
     const selectCustomer = (e: React.ChangeEvent<HTMLSelectElement>) => {
