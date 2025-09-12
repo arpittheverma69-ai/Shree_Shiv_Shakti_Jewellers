@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, Suspense } from "react";
+import React, { useEffect, Suspense, useState } from "react";
 import LineItemsPage from "./LineItemsPage";
 import ReviewGeneratePage from "./ReviewGeneratePage";
 import { useInvoiceForm } from "@/hooks/useInvoiceForm";
@@ -11,11 +11,13 @@ import { useSearchParams } from "next/navigation";
 const CreateInvoiceInner: React.FC = () => {
     const invoiceForm = useInvoiceForm();
     const searchParams = useSearchParams();
+    const [isEdit, setIsEdit] = useState(false);
 
     // Load invoice when in edit mode
     useEffect(() => {
         const editId = searchParams.get("edit");
         if (!editId) return;
+        setIsEdit(true);
 
         const loadInvoice = async () => {
             const loadingToast = toast.loading("Loading invoice data for editing...", { closeOnClick: true });
@@ -98,24 +100,20 @@ const CreateInvoiceInner: React.FC = () => {
 
     return (
         <main className="flex-1 md:p-8">
-            <div className="flex-1 max-md:pt-2">
+            <div className="flex-1 max-md:pt-6">
+
                 <InvoiceStepper currentStep={invoiceForm.currentStep} />
 
                 {invoiceForm.currentStep === 1 && (
-                    <div className="max-w-full md:max-w-5xl mx-auto px-3 md:px-0">
-                        <InvoiceDetailsPage {...invoiceForm} />
-                    </div>
+                    <InvoiceDetailsPage {...invoiceForm} isEdit={isEdit} />
                 )}
                 {invoiceForm.currentStep === 2 && (
-                    <div className="max-w-full md:max-w-5xl mx-auto px-3 md:px-0">
-                        <LineItemsPage {...invoiceForm} />
-                    </div>
+                    <LineItemsPage {...invoiceForm} />
                 )}
                 {invoiceForm.currentStep === 3 && (
-                    <div className="max-w-full md:max-w-6xl mx-auto px-2 md:px-0">
-                        <ReviewGeneratePage {...invoiceForm} />
-                    </div>
+                    <ReviewGeneratePage {...invoiceForm} />
                 )}
+
             </div>
         </main>
     );
