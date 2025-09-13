@@ -205,6 +205,14 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
 
     const totals = calculateTotals();
 
+    // Keep global roundoff in sync when auto-roundoff is enabled so other pages can use it
+    useEffect(() => {
+        if (autoRoundoffEnabled) {
+            setGlobalRoundoff(Number(totals.autoRoundoff.toFixed(2)));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoRoundoffEnabled, totals.autoRoundoff]);
+
     return (
         <div className="max-w-7xl mx-auto">
             {/* Header Section */}
@@ -472,7 +480,7 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                             {invoiceData.mode === 'direct' && (
                                 <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 p-4 rounded-[20px] border border-yellow-500/20">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-yellow-500 rounded-[16px] flex items-center justify-center text-white text-lg">
+                                        <div className="w-8 h-8 bg-yellow-500 rounded-[16px] flex items-center justify-center text-white">
                                             💰
                                         </div>
                                         <div>
@@ -704,7 +712,15 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                                             <input
                                                 type="checkbox"
                                                 checked={autoRoundoffEnabled}
-                                                onChange={(e) => setAutoRoundoffEnabled(e.target.checked)}
+                                                onChange={(e) => {
+                                                    const enabled = e.target.checked;
+                                                    setAutoRoundoffEnabled(enabled);
+                                                    if (enabled) {
+                                                        // Immediately reflect the current auto roundoff to global state
+                                                        const t = calculateTotals();
+                                                        setGlobalRoundoff(Number(t.autoRoundoff.toFixed(2)));
+                                                    }
+                                                }}
                                             />
                                             Auto
                                         </label>

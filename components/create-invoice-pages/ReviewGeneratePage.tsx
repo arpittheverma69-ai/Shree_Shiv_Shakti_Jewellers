@@ -32,6 +32,7 @@ interface ReviewGeneratePageProps {
     lineItems: LineItem[];
     globalRoundoff: number;
     prevStep: () => void;
+    resetForm: () => void;
 }
 
 const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
@@ -39,6 +40,7 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
     lineItems,
     globalRoundoff,
     prevStep,
+    resetForm,
 }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -135,7 +137,8 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                 buyer_address: invoiceData.buyer_address,
                 buyer_gstin: invoiceData.buyer_gstin,
                 // Convert to number or omit
-                buyer_state_code: invoiceData.buyer_state_code ? Number(invoiceData.buyer_state_code) : undefined,
+                buyer_state_id: invoiceData.buyer_state_id ? Number(invoiceData.buyer_state_id) : undefined,
+                buyer_state_code: invoiceData.buyer_state_code,
                 tax_type: derivedTaxType,
                 total_invoice_value: totalInvoice,
                 roundoff: globalRoundoff,
@@ -168,7 +171,7 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                         ]
                 }))
             };
-            // console.log("invoicePayload", invoicePayload);
+            console.log("invoicePayload", invoicePayload);
 
             const isEdit = Boolean(editId);
             const url = isEdit ? `/api/invoices/${editId}` : '/api/invoices';
@@ -489,7 +492,11 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                             </button>
                             <button
                                 id="createInvoiceBtn"
-                                onClick={() => router.push('/dashboard/create-invoice')}
+                                onClick={() => {
+                                    // Clear current invoice draft and go to fresh create flow
+                                    resetForm();
+                                    router.replace('/dashboard/create-invoice');
+                                }}
                                 className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-primary/90 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Plus className="w-4 h-4 md:w-5 md:h-5" />

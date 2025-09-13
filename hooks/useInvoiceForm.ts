@@ -49,9 +49,31 @@ export const useInvoiceForm = () => {
         buyer_gstin: '',
         buyer_state: '',
         buyer_state_code: '',
+        buyer_state_id: '',
     });
 
     const [globalRoundoff, setGlobalRoundoff] = useState<number>(0);
+
+    // Reset the entire invoice form to initial state (for creating a new invoice)
+    const resetForm = () => {
+        setCurrentStep(1);
+        setLineItems([]);
+        setGlobalRoundoff(0);
+        setInvoiceData({
+            type: 'retail',
+            mode: 'component',
+            invoice_date: '',
+            invoice_number: '',
+            eway_bill: '',
+            customer_id: '',
+            buyer_name: '',
+            buyer_address: '',
+            buyer_gstin: '',
+            buyer_state: '',
+            buyer_state_code: '',
+            buyer_state_id: '',
+        });
+    };
 
     const addLineItem = (item: Omit<LineItem, 'id' | 'taxableValue'>) => {
         const taxableValue = item.quantity * item.rate;
@@ -142,5 +164,6 @@ export const useInvoiceForm = () => {
         setCurrentStep,
         setLineItems, // expose for edit flow
         clearLineItems, // expose for clearing items
+        resetForm, // expose for creating a brand new invoice
     };
 };

@@ -100,12 +100,12 @@ export async function PUT(
     // Normalize data similar to POST
     const transactionType = data.transaction_type ?? data.type;
     const inputMode = data.input_mode ?? data.mode;
-    const buyerStateCodeRaw = data.buyer_state_code;
-    const buyerStateCode = buyerStateCodeRaw === undefined || buyerStateCodeRaw === null
-      ? null
-      : Number.isNaN(Number(buyerStateCodeRaw))
-        ? null
-        : Number(buyerStateCodeRaw);
+    // const buyerStateCodeRaw = data.buyer_state_code;
+    // const buyerStateCode = buyerStateCodeRaw === undefined || buyerStateCodeRaw === null
+    //   ? null
+    //   : Number.isNaN(Number(buyerStateCodeRaw))
+    //     ? null
+    //     : Number(buyerStateCodeRaw);
 
     // Delete existing line items and their taxes
     await prisma.lineItem.deleteMany({
@@ -124,7 +124,7 @@ export async function PUT(
         buyer_name: data.buyer_name,
         buyer_address: data.buyer_address,
         buyer_gstin: data.buyer_gstin,
-        buyer_state_code: buyerStateCode,
+        buyer_state_code: data.buyer_state_code,
         tax_type: data.tax_type,
         total_invoice_value: parseFloat(data.total_invoice_value) || 0,
         roundoff: parseFloat(data.roundoff) || 0,

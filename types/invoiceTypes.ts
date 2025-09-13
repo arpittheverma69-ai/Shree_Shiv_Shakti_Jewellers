@@ -19,6 +19,7 @@ export interface InvoiceData {
     buyer_name: string;
     buyer_address: string;
     buyer_gstin: string;
+    buyer_state_id: string;
     buyer_state: string;
     buyer_state_code: string;
     line_items?: LineItem[];

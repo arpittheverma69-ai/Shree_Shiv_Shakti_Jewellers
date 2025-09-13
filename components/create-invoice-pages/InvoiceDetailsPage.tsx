@@ -5,6 +5,7 @@ import { showToast } from '@/utils/toast';
 import { Calendar, Hash, User, MapPin, Building2, CreditCard, Calculator, ArrowRight } from 'lucide-react';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import Image from 'next/image';
+import { log } from 'console';
 
 interface InvoiceDetailsPageProps {
     invoiceData: InvoiceData;
@@ -457,7 +458,7 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
                                     </label>
                                     <div className="relative">
                                         <select
-                                            value={invoiceData.buyer_state_code}
+                                            value={invoiceData?.buyer_state_code}
                                             disabled={defaultCustomer}
                                             onChange={(e) => {
                                                 const selectedState = states.find(
@@ -465,6 +466,7 @@ const InvoiceDetailsPage: React.FC<InvoiceDetailsPageProps> = ({
                                                 );
                                                 if (selectedState) {
                                                     updateInvoiceData({
+                                                        buyer_state_id: String(selectedState.id),
                                                         buyer_state: selectedState.state,
                                                         buyer_state_code: selectedState.statecode,
                                                     });

@@ -29,7 +29,6 @@ const CreateInvoiceInner: React.FC = () => {
                     throw new Error(`Failed to load invoice: ${res.status}`);
                 }
                 const inv = await res.json();
-                // console.log("Invoice data loaded:", inv);
 
                 const invoice_date = inv.invoice_date
                     ? new Date(inv.invoice_date).toISOString().slice(0, 10)
@@ -55,8 +54,9 @@ const CreateInvoiceInner: React.FC = () => {
                     buyer_name: inv.buyer_name || "",
                     buyer_address: inv.buyer_address || "",
                     buyer_gstin: inv.buyer_gstin || "",
+                    buyer_state_id: inv.buyer_state_code ? String(inv.buyer_state_code) : "",
                     buyer_state: customerState?.state_name || matchedState?.state || "",
-                    buyer_state_code: customerState?.state_code || matchedState?.statecode || "",
+                    buyer_state_code: customerState?.state_code || matchedState?.statecode || inv.buyer_state_code,
                 });
 
                 const mappedItems = (inv.line_items || []).map((item: any, idx: number) => ({
