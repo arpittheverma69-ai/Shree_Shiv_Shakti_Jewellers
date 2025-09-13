@@ -64,12 +64,12 @@ export async function POST(request: NextRequest) {
     // Normalize payload keys from client
     const transactionType: string | undefined = data.transaction_type ?? data.type;
     const inputMode: string | undefined = data.input_mode ?? data.mode;
-    const buyerStateCodeRaw = data.buyer_state_code;
-    const buyerStateCode = buyerStateCodeRaw === undefined || buyerStateCodeRaw === null
-      ? null
-      : Number.isNaN(Number(buyerStateCodeRaw))
-        ? null
-        : Number(buyerStateCodeRaw);
+    // const buyerStateCodeRaw = data.buyer_state_code;
+    // const buyerStateCode = buyerStateCodeRaw === undefined || buyerStateCodeRaw === null
+    //   ? null
+    //   : Number.isNaN(Number(buyerStateCodeRaw))
+    //     ? null
+    //     : Number(buyerStateCodeRaw);
 
     if (!transactionType) {
       return NextResponse.json({ error: "transaction_type is required" }, { status: 400 });
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         buyer_name: data.buyer_name,
         buyer_address: data.buyer_address,
         buyer_gstin: data.buyer_gstin,
-        buyer_state_code: buyerStateCode,
+        buyer_state_code: data.buyer_state_code,
         tax_type: taxType,
         total_invoice_value: parseFloat(data.total_invoice_value) || 0,
         roundoff: parseFloat(data.roundoff) || 0,

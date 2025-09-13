@@ -21,6 +21,87 @@ interface InvoicePdfData {
     lineItems: LineItem[];
 }
 
+// Function to convert image to data URL
+async function imageToDataUrl(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            } catch (error) {
+                reject(error);
+            }
+        };
+
+        img.onerror = () => {
+            reject(new Error('Failed to load image: ' + url));
+        };
+
+        img.src = url;
+
+        // If image is already cached, it might not trigger onload
+        if (img.complete) {
+            img.onload = null; // Prevent double firing
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            } else {
+                reject(new Error('Could not get canvas context'));
+            }
+        }
+    });
+}
+
+// Function to convert all images in HTML to data URLs
+async function convertImagesToDataUrls(htmlContent: string): Promise<string> {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    const images = doc.getElementsByTagName('img');
+
+    const conversionPromises: Promise<void>[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const src = img.getAttribute('src');
+
+        if (src && !src.startsWith('data:') && !src.startsWith('blob:')) {
+            const conversionPromise = imageToDataUrl(src)
+                .then(dataUrl => {
+                    img.setAttribute('src', dataUrl);
+                })
+                .catch(error => {
+                    console.error('Failed to convert image to data URL:', error);
+                    // Keep the original src if conversion fails
+                });
+
+            conversionPromises.push(conversionPromise);
+        }
+    }
+
+    // Wait for all image conversions to complete
+    await Promise.all(conversionPromises);
+
+    return doc.documentElement.outerHTML;
+}
+
 export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRoundoff: number = 0, shopProfile?: ShopProfile) => {
     // Default shop profile if not provided - should be fetched from database
     const defaultShopProfile: ShopProfile = {
@@ -136,9 +217,9 @@ export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRou
         <div class="max-w-4xl mx-auto border border-black">
             <div class="grid grid-cols-2">
                 <div class="h-[275px]">
-                    <div class="border-b border-black w-[100%] pt-1 leading-[1.4] h-auto flex justify-between">
-                        <div class="ml-1">
-                            <img src="/jw_logo.png" alt="JW Logo" class="w-32 h-20 object-contain" />
+                    <div class="border-b border-black w-[100%] pt-1 leading-[1.4] h-auto flex justify-start">
+                        <div class="ml-1 float-left">
+                            <img src="/jw_logo.png" alt="JW Logo" class="w-32 h-24 object-contain" />
                         </div>
                         <div class="ml-0.5">
                             <h1 class="font-bold">${profile.shopName.toUpperCase()}</h1>
@@ -209,7 +290,7 @@ export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRou
                 </div>
             </div>
 
-            <table class="w-full border-collapse border-t border-b border-black table-fixed ${lineItems?.length > 0 ? `h-[calc(414px-${lineItems?.length * 16}px)]` : `h-[414px]`}">
+            <table class="w-full border-collapse border-t border-b border-black table-fixed text-[10px] ${lineItems?.length > 0 ? `h-[calc(414px-${lineItems?.length * 16}px)]` : `h-[414px]`}">
                 <thead>
                     <tr class="border-b border-black text-[9px] h-[38px]">
                         <th class="border-r border-black w-[15.11px]">SI No.</th>
@@ -316,7 +397,7 @@ export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRou
                 </tbody>
             </table>
 
-            <table class="w-full border-collapse border-b border-black h-[60.50px]">
+            <table class="w-full border-collapse border-b border-black h-[60.50px] text-[10px]">
                 <thead>
                     <tr class="border-b border-black ">
                         <th class="border-r border-black h-[17px] w-[38%] font-normal" rowspan="2">HSN/SAC</th>
@@ -362,7 +443,7 @@ export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRou
                         <td class="border-r border-black text-right"></td>
                         <td class="font-bold border-r border-black text-right"></td>
                         <td class="font-bold text-right">${igstAmount.toLocaleString('en-IN', { maximumFractionDigits: 3, minimumFractionDigits: 2 })}</td>` : `
-                        <td class="font-bold border-r border-black text-right">${cgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 3, minimumFractionDigits: 2 })}</td>
+                        <td class="font-bold border-r borderblack text-right">${cgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 3, minimumFractionDigits: 2 })}</td>
                         <td class="border-r border-black text-right"></td>
                         <td class="font-bold border-r border-black text-right">${sgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 3, minimumFractionDigits: 2 })}</td>
                         <td class="font-bold text-right">${(cgstAmount + sgstAmount).toLocaleString('en-IN', { maximumFractionDigits: 3, minimumFractionDigits: 2 })}</td>`}
@@ -370,7 +451,7 @@ export const generateInvoicePDF = (invoiceData: any, lineItems: any[], globalRou
                 </tfoot>
             </table>
             
-            <div class="w-full h-full">
+            <div class="w-full h-fit">
                 <p class="text-[10px]"><span class="mr-4 p-1">Tax Amount (in words) :</span><span class="font-bold">Indian ${numberToWords(totalTax)}</span></p>
 
                 <div class="grid grid-cols-2 mt-4 p-1">
@@ -459,13 +540,26 @@ export function generateInvoiceHTML(data: { invoiceData: InvoiceData; lineItems:
 }
 
 export const downloadInvoicePDF = async (data: InvoicePdfData & { cgstRate?: number; sgstRate?: number; globalRoundoff?: number; copies?: string[]; shopProfile: ShopProfile }) => {
-    const htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+    let htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+
+    try {
+        // Convert images to data URLs before proceeding
+        htmlContent = await convertImagesToDataUrls(htmlContent);
+    } catch (error) {
+        console.error('Error converting images to data URLs:', error);
+        // Continue with the original HTML even if conversion fails
+    }
 
     // Create a new window with the HTML content for printing
     const printWindow = window.open('', '_blank');
     if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+
+        // Add a small delay to ensure the content is fully rendered
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
     } else {
         // Fallback to download as .html file if popup blocked
         const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -481,7 +575,16 @@ export const downloadInvoicePDF = async (data: InvoicePdfData & { cgstRate?: num
 };
 
 export const downloadInvoiceHTMLFile = async (data: InvoicePdfData & { cgstRate?: number; sgstRate?: number; globalRoundoff?: number; copies?: string[]; shopProfile: ShopProfile }) => {
-    const htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+    let htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+
+    try {
+        // Convert images to data URLs before downloading
+        htmlContent = await convertImagesToDataUrls(htmlContent);
+    } catch (error) {
+        console.error('Error converting images to data URLs:', error);
+        // Continue with the original HTML even if conversion fails
+    }
+
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -494,9 +597,15 @@ export const downloadInvoiceHTMLFile = async (data: InvoicePdfData & { cgstRate?
 };
 
 export const generatePDFBlob = async (data: InvoicePdfData & { cgstRate?: number; sgstRate?: number; globalRoundoff?: number; copies?: string[]; shopProfile: ShopProfile }): Promise<Blob> => {
-    // For client-side PDF generation, we'll use the browser's print to PDF functionality
-    // This requires user interaction but provides exact formatting
-    const htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+    let htmlContent = generateInvoiceHTML({ invoiceData: data.invoiceData, lineItems: data.lineItems, cgstRate: data.cgstRate, sgstRate: data.sgstRate, globalRoundoff: data.globalRoundoff, copies: data.copies as any, shopProfile: data.shopProfile });
+
+    try {
+        // Convert images to data URLs
+        htmlContent = await convertImagesToDataUrls(htmlContent);
+    } catch (error) {
+        console.error('Error converting images to data URLs:', error);
+        // Continue with the original HTML even if conversion fails
+    }
 
     return new Promise((resolve) => {
         const iframe = document.createElement('iframe');
@@ -506,8 +615,6 @@ export const generatePDFBlob = async (data: InvoicePdfData & { cgstRate?: number
         iframe.contentDocument?.write(htmlContent);
         iframe.contentDocument?.close();
 
-        // This is a simplified approach - in production, you'd want to use a proper PDF library
-        // or server-side PDF generation
         setTimeout(() => {
             const blob = new Blob([htmlContent], { type: 'text/html' });
             document.body.removeChild(iframe);
