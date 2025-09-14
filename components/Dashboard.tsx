@@ -462,20 +462,29 @@ export default function Dashboard() {
                 setLoading(true);
                 const response = await fetch('/api/invoices');
                 const data = await response.json();
-                const invoices = data.invoices || [];
+                let invoices = data.invoices || [];
+
+                // Don't filter invoices by time range here - we want to show all historical data
+                // The time range selector will be used for other purposes or removed
 
                 if (invoices.length > 0) {
                     // Group invoices by month and categorize by sales type
                     const monthlyData = invoices.reduce((acc: any, invoice: any) => {
-                        const date = new Date(invoice.created_at || invoice.invoice_date);
-                        const monthKey = date.toLocaleString('default', { month: 'short' });
+                        // Use invoice_date column as specified, with fallback to created_at
+                        const dateString = invoice.invoice_date || invoice.created_at;
+                        const date = new Date(dateString);
+
+                        // Create a proper month-year key to handle year boundaries
+                        const monthKey = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+                        const sortKey = date.getFullYear() * 100 + date.getMonth(); // For sorting
 
                         if (!acc[monthKey]) {
                             acc[monthKey] = {
                                 retailSales: 0,
                                 interstateSales: 0,
                                 outerstateSales: 0,
-                                totalSales: 0
+                                totalSales: 0,
+                                sortKey: sortKey
                             };
                         }
 
@@ -503,13 +512,22 @@ export default function Dashboard() {
                         return acc;
                     }, {});
 
-                    const months = Object.keys(monthlyData).slice(-6); // Last 6 months
+                    // Sort months chronologically and show all months with data
+                    const sortedMonths = Object.keys(monthlyData)
+                        .sort((a, b) => monthlyData[a].sortKey - monthlyData[b].sortKey);
+
+                    const months = sortedMonths.map(month => {
+                        // Convert back to short format for display (remove year if current year)
+                        const currentYear = new Date().getFullYear();
+                        const [monthName, year] = month.split(' ');
+                        return parseInt(year) === currentYear ? monthName : month;
+                    });
 
                     // Create datasets showing all three categories together
                     const datasets = [
                         {
                             label: 'Retail Sales',
-                            data: months.map(month => monthlyData[month].retailSales),
+                            data: sortedMonths.map(monthKey => monthlyData[monthKey].retailSales),
                             backgroundColor: 'rgba(59, 130, 246, 0.7)',
                             borderColor: 'rgba(59, 130, 246, 1)',
                             borderRadius: 12,
@@ -517,7 +535,7 @@ export default function Dashboard() {
                         },
                         {
                             label: 'Inter-state Sales',
-                            data: months.map(month => monthlyData[month].interstateSales),
+                            data: sortedMonths.map(monthKey => monthlyData[monthKey].interstateSales),
                             backgroundColor: 'rgba(124, 58, 237, 0.7)',
                             borderColor: 'rgba(124, 58, 237, 1)',
                             borderRadius: 12,
@@ -525,7 +543,7 @@ export default function Dashboard() {
                         },
                         {
                             label: 'Outer-state Sales',
-                            data: months.map(month => monthlyData[month].outerstateSales),
+                            data: sortedMonths.map(monthKey => monthlyData[monthKey].outerstateSales),
                             backgroundColor: 'rgba(16, 185, 129, 0.7)',
                             borderColor: 'rgba(16, 185, 129, 1)',
                             borderRadius: 12,
@@ -589,40 +607,86 @@ export default function Dashboard() {
 
     // Generate line chart data from sales data
     const getLineChartData = (): ChartData => {
+        let datasets;
+        if (selectedSalesCategory === 'All Categories') {
+            datasets = salesChartData.datasets.map(dataset => ({
+                ...dataset,
+                backgroundColor: dataset.borderColor?.replace('1)', '0.1)') || 'rgba(59, 130, 246, 0.1)',
+                borderRadius: 0,
+                fill: true,
+            }));
+        } else {
+            const selectedDataset = salesChartData.datasets.find(dataset =>
+                dataset.label === selectedSalesCategory
+            );
+            datasets = selectedDataset ? [{
+                ...selectedDataset,
+                label: `${selectedSalesCategory} Trend`,
+                backgroundColor: selectedDataset.borderColor?.replace('1)', '0.1)') || 'rgba(59, 130, 246, 0.1)',
+                borderRadius: 0,
+                fill: true,
+            }] : [];
+        }
+
         return {
             labels: salesChartData.labels,
-            datasets: [
-                {
-                    label: `${selectedSalesCategory} Trend`,
-                    data: salesChartData.datasets[0]?.data || [],
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderRadius: 0,
-                    fill: true,
-                },
-            ],
+            datasets: datasets,
         };
     };
 
     // Generate doughnut chart data from sales data
     const getDoughnutChartData = (): ChartData => {
-        const currentData = salesChartData.datasets[0]?.data || [];
-        const total = currentData.reduce((sum: number, val: number) => sum + val, 0);
+        if (selectedSalesCategory === 'All Categories') {
+            // Show distribution of all categories
+            const totals = salesChartData.datasets.map(dataset => {
+                const total = dataset.data.reduce((sum: number, val: number) => sum + val, 0);
+                return total;
+            });
 
-        return {
-            labels: [selectedSalesCategory, 'Other Categories'],
-            datasets: [
-                {
-                    label: 'Sales Distribution',
-                    data: [total, total * 0.3], // Approximate other categories
-                    backgroundColor: [
-                        'rgba(59, 130, 246, 0.8)',
-                        'rgba(124, 58, 237, 0.8)',
-                    ],
-                    borderRadius: 0,
-                },
-            ],
-        };
+            return {
+                labels: salesChartData.datasets.map(dataset => dataset.label),
+                datasets: [
+                    {
+                        label: 'Sales Distribution',
+                        data: totals,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(124, 58, 237, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                        ],
+                        borderRadius: 0,
+                    },
+                ],
+            };
+        } else {
+            // Show selected category vs others
+            const selectedDataset = salesChartData.datasets.find(dataset =>
+                dataset.label === selectedSalesCategory
+            );
+            const selectedTotal = selectedDataset ?
+                selectedDataset.data.reduce((sum: number, val: number) => sum + val, 0) : 0;
+
+            const otherTotals = salesChartData.datasets
+                .filter(dataset => dataset.label !== selectedSalesCategory)
+                .reduce((sum, dataset) => {
+                    return sum + dataset.data.reduce((dataSum: number, val: number) => dataSum + val, 0);
+                }, 0);
+
+            return {
+                labels: [selectedSalesCategory, 'Other Categories'],
+                datasets: [
+                    {
+                        label: 'Sales Distribution',
+                        data: [selectedTotal, otherTotals],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(124, 58, 237, 0.8)',
+                        ],
+                        borderRadius: 0,
+                    },
+                ],
+            };
+        }
     };
 
     const chartOptions: ChartOptions = {
@@ -701,7 +765,9 @@ export default function Dashboard() {
                             </svg>
                         </div>
                     </div>
-                    <button className="w-full sm:w-auto bg-primary text-primary-foreground text-sm font-semibold py-2 sm:py-3 px-4 sm:px-6 rounded-[16px] sm:rounded-[20px] flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-200 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="w-full sm:w-auto bg-primary text-primary-foreground text-sm font-semibold py-2 sm:py-3 px-4 sm:px-6 rounded-[16px] sm:rounded-[20px] flex items-center justify-center gap-2 hover:bg-primary/90 transition-all duration-200 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>

@@ -5,7 +5,6 @@ import { showToast } from '@/utils/toast';
 import { Calendar, Hash, User, MapPin, Building2, CreditCard, Calculator, ArrowRight } from 'lucide-react';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import Image from 'next/image';
-import { log } from 'console';
 
 interface InvoiceDetailsPageProps {
     invoiceData: InvoiceData;
