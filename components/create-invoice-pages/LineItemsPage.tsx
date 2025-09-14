@@ -12,7 +12,7 @@ interface LineItemsPageProps {
     updateLineItem: (id: number, updates: Partial<LineItem>) => void;
     invoiceData: any;
     globalRoundoff: number;
-    setGlobalRoundoff: (value: number) => void;
+    setGlobalRoundoff: (value: number | ((prev: number) => number)) => void;
     nextStep: () => void;
     prevStep: () => void;
     clearLineItems?: () => void;
@@ -35,10 +35,10 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
     const [formData, setFormData] = useState({
         hsnSac: '',
         description: 'silver ornament',
-        quantity: '1.000',
+        quantity: '0',
         unit: 'KGS',
         rate: '0',
-        targetAmount: '0.00',
+        targetAmount: '0',
         directAmount: '0.00',
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -116,11 +116,15 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                 ? (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100
                 : (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100;
 
-            // Calculate taxable value from final target amount (including taxes)
-            const taxableValueFromTarget = targetAmount / (1 + totalTaxRate);
+            // Calculate taxable value from target amount (reverse calculation)
+            // Formula: targetAmount = taxableValue + (taxableValue * taxRate)
+            // So: taxableValue = targetAmount / (1 + taxRate)
+            const taxableValue = targetAmount / (1 + totalTaxRate);
+            
+            // Calculate quantity based on taxable value and round to 3 decimal places
+            const exactQuantity = taxableValue / rate;
+            quantity = parseFloat(exactQuantity.toFixed(3));
 
-            // Calculate quantity based on taxable value
-            quantity = taxableValueFromTarget / rate;
         } else if (invoiceData.mode === 'direct') {
             // Direct Amount Entry: Use direct amount as taxable value
             if (directAmount <= 0) {
@@ -150,9 +154,9 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
         // Reset form fields
         setFormData(prev => ({
             ...prev,
-            quantity: '1',
+            quantity: '0',
             rate: invoiceData.mode === 'direct' ? directAmount.toFixed(2) : '0',
-            targetAmount: '0.00',
+            targetAmount: '0',
             directAmount: '0.00',
         }));
         setFormErrors({});
@@ -382,6 +386,7 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                                             onChange={(e) => {
                                                 const rate = e.target.value;
                                                 if (invoiceData.mode === 'reverse') {
+                                                    setAutoRoundoffEnabled(false);
                                                     // Auto-calculate quantity when rate changes in reverse mode
                                                     const targetAmount = parseFloat(formData.targetAmount) || 0;
 
@@ -391,11 +396,32 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                                                             ? (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100
                                                             : (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100;
 
-                                                        // Calculate taxable value from final target amount (including taxes)
-                                                        const taxableValueFromTarget = targetAmount / (1 + totalTaxRate);
+                                                        const rateFloat = parseFloat(rate);
+
+                                                        // Calculate taxable value from target amount (reverse calculation)
+                                                        // Formula: targetAmount = taxableValue + (taxableValue * taxRate)
+                                                        // So: taxableValue = targetAmount / (1 + taxRate)
+                                                        const taxableValue = targetAmount / (1 + totalTaxRate);
 
                                                         // Calculate quantity based on taxable value
-                                                        const calculatedQuantity = (taxableValueFromTarget / parseFloat(rate)).toFixed(3);
+                                                        const exactQuantity = taxableValue / rateFloat;
+                                                        const calculatedQuantity = exactQuantity.toFixed(3);
+
+                                                        // Calculate what the actual total would be with rounded quantity
+                                                        const actualTaxableValue = parseFloat(calculatedQuantity) * rateFloat;
+                                                        
+                                                        // Calculate exact taxes without rounding intermediate values
+                                                        const exactCGST = actualTaxableValue * (parseFloat(cgstRate) / 100);
+                                                        const exactSGST = actualTaxableValue * (parseFloat(sgstRate) / 100);
+                                                        const exactIGST = isIGST ? actualTaxableValue * ((parseFloat(cgstRate) + parseFloat(sgstRate)) / 100) : 0;
+                                                        
+                                                        const totalExactTax = isIGST ? exactIGST : (exactCGST + exactSGST);
+                                                        const actualTotal = actualTaxableValue + totalExactTax;
+
+                                                        // Calculate roundoff needed to match target amount exactly
+                                                        const roundoffNeeded = targetAmount - actualTotal;
+
+                                                        setGlobalRoundoff(parseFloat(roundoffNeeded.toFixed(2)));
 
                                                         setFormData({
                                                             ...formData,
@@ -437,17 +463,46 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
                                                     const targetAmount = e.target.value;
                                                     const rate = parseFloat(formData.rate) || 0;
 
-                                                    if (rate > 0 && parseFloat(targetAmount) > 0) {
+
+                                                    setAutoRoundoffEnabled(false); if (rate > 0 && parseFloat(targetAmount) > 0) {
                                                         // Calculate total tax rate
                                                         const totalTaxRate = isIGST
                                                             ? (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100
                                                             : (parseFloat(cgstRate) + parseFloat(sgstRate)) / 100;
 
-                                                        // Calculate taxable value from final target amount (including taxes)
-                                                        const taxableValueFromTarget = parseFloat(targetAmount) / (1 + totalTaxRate);
+                                                        const targetAmountFloat = parseFloat(targetAmount);
+
+                                                        // Calculate taxable value from target amount (reverse calculation)
+                                                        // Formula: targetAmount = taxableValue + (taxableValue * taxRate)
+                                                        // So: taxableValue = targetAmount / (1 + taxRate)
+                                                        const taxableValue = targetAmountFloat / (1 + totalTaxRate);
 
                                                         // Calculate quantity based on taxable value
-                                                        const calculatedQuantity = (taxableValueFromTarget / rate).toFixed(3);
+                                                        const exactQuantity = taxableValue / rate;
+                                                        const calculatedQuantity = exactQuantity.toFixed(3);
+
+                                                        // Calculate what the actual total would be with rounded quantity
+                                                        const actualTaxableValue = parseFloat(calculatedQuantity) * rate;
+                                                        
+                                                        // Calculate exact taxes without rounding intermediate values
+                                                        const exactCGST = actualTaxableValue * (parseFloat(cgstRate) / 100);
+                                                        const exactSGST = actualTaxableValue * (parseFloat(sgstRate) / 100);
+                                                        const exactIGST = isIGST ? actualTaxableValue * ((parseFloat(cgstRate) + parseFloat(sgstRate)) / 100) : 0;
+                                                        
+                                                        const totalExactTax = isIGST ? exactIGST : (exactCGST + exactSGST);
+                                                        const actualTotal = actualTaxableValue + totalExactTax;
+
+                                                        // Calculate roundoff needed to match target amount exactly
+                                                        const roundoffNeeded = targetAmountFloat - actualTotal;
+
+                                                        console.log("Target Amount:", targetAmountFloat);
+                                                        console.log("Calculated Taxable Value:", taxableValue);
+                                                        console.log("Exact Quantity:", exactQuantity);
+                                                        console.log("Rounded Quantity:", calculatedQuantity);
+                                                        console.log("Actual Total:", actualTotal);
+                                                        console.log("Roundoff Needed:", roundoffNeeded);
+
+                                                        setGlobalRoundoff(parseFloat(roundoffNeeded.toFixed(2)));
 
                                                         setFormData({
                                                             ...formData,

@@ -379,7 +379,7 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                                                 <td className="p-3 font-mono text-sm">{item.hsn_sac_code}</td>
                                                 <td className="p-3 font-medium">{item.description}</td>
                                                 <td className="p-3 text-right">
-                                                    <span className="font-semibold">{item.quantity.toFixed(3)}</span>
+                                                    <span className="font-semibold">{item.quantity.toFixed(4)}</span>
                                                     <span className="text-muted-foreground ml-1">{item.unit}</span>
                                                 </td>
                                                 <td className="p-3 text-right font-semibold">{formatCurrency(item.rate)}</td>
@@ -474,10 +474,10 @@ const ReviewGeneratePage: React.FC<ReviewGeneratePageProps> = ({
                                 {isSubmitting ? 'Submitting...' : 'Submit Invoice'}
                             </button>
 
-                            <button className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center justify-center gap-2">
+                            {/* <button className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-[16px] font-medium hover:bg-accent hover:text-accent-foreground transition-all duration-200 flex items-center justify-center gap-2">
                                 <Share2 className="w-4 h-4" />
                                 Share Invoice
-                            </button>
+                            </button> */}
                             <button
                                 onClick={handleGeneratePDF}
                                 disabled={isGenerating}

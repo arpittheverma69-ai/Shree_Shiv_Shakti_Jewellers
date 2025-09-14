@@ -142,7 +142,7 @@ const InvoiceSlipPreview: React.FC<InvoiceSlipPreviewProps> = ({
                                         <td className="border border-black p-2">{item.description}</td>
                                         <td className="border border-black p-2 text-center">{item.hsn_sac_code}</td>
                                         <td className="border border-black p-2 text-center font-bold">
-                                            {Number(item.quantity).toFixed(item.unit === 'PCS' ? 0 : 3)}
+                                            {Number(item.quantity).toFixed(item.unit === 'PCS' ? 0 : 4)}
                                         </td>
                                         <td className="border border-black p-2 text-center">{item.unit}</td>
                                         <td className="border border-black p-2 text-right">
