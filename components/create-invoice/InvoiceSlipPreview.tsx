@@ -1,3 +1,4 @@
+import { useShopProfile } from '@/contexts/ShopProfileContext';
 import { LineItem } from '@/types/invoiceTypes';
 import { numberToWords } from '@/utils/numberToWords';
 import React from 'react';
@@ -23,6 +24,7 @@ const InvoiceSlipPreview: React.FC<InvoiceSlipPreviewProps> = ({
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
+    const shopdata = useShopProfile();
 
     // ✅ Ensure all numeric values are properly casted
     const taxableValue = lineItems.reduce((sum, item) => sum + Number(item.taxableValue || 0), 0);
@@ -76,7 +78,7 @@ const InvoiceSlipPreview: React.FC<InvoiceSlipPreviewProps> = ({
                     <div className="border-b-2 border-black pb-4 mb-6">
                         <div className="text-center mb-4">
                             <h1 className="text-2xl font-bold text-blue-800 dark:text-blue-400">
-                                JEWELLERS INVOICE
+                                {shopdata.shopProfile.shopName}
                             </h1>
                             <p className="text-lg font-semibold">TAX INVOICE</p>
                             <p className="text-sm italic">(ORIGINAL FOR RECIPIENT)</p>
@@ -86,11 +88,10 @@ const InvoiceSlipPreview: React.FC<InvoiceSlipPreviewProps> = ({
                             <div>
                                 <h3 className="font-bold text-sm mb-2">SELLER DETAILS:</h3>
                                 <div className="text-sm space-y-1">
-                                    <p className="font-semibold">Your Jewellery Store</p>
-                                    <p>123 Main Street, Jewellery Market</p>
-                                    <p>City, State - 123456</p>
-                                    <p>GSTIN: 12ABCDE3456F7GH</p>
-                                    <p>Phone: +91 98765 43210</p>
+                                    <p className="font-semibold">{shopdata.shopProfile.shopName}</p>
+                                    <p>{shopdata.shopProfile.address}</p>
+                                    <p>{shopdata.shopProfile.city}, {shopdata.shopProfile.state}</p>
+                                    <p>GSTIN: {shopdata.shopProfile.gstin}</p>
                                 </div>
                             </div>
 
@@ -231,13 +232,12 @@ const InvoiceSlipPreview: React.FC<InvoiceSlipPreviewProps> = ({
                                 <li>• Goods once sold will not be taken back</li>
                                 <li>• All disputes subject to local jurisdiction</li>
                                 <li>• Payment due within 30 days</li>
-                                <li>• Interest @ 18% p.a. on delayed payments</li>
                             </ul>
                         </div>
 
                         <div className="text-right">
                             <div className="mb-16">
-                                <p className="font-bold text-sm">For Your Jewellery Store</p>
+                                <p className="font-bold text-sm">For {shopdata.shopProfile.shopName}</p>
                             </div>
                             <div className="border-t border-black pt-2">
                                 <p className="text-sm">Authorized Signatory</p>
