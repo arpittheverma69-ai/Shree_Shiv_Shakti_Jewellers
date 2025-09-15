@@ -1,32 +1,37 @@
-# J.V. Jewellers - Invoice Management System
+# SHREE SHIV SHAKTI JEWELLERS Invoice Management System
 
 A complete invoice management system built with Next.js 15, TypeScript, PostgreSQL, and Prisma for jewellery businesses.
 
 ## Features
 
 ✅ **Authentication System**
+
 - Secure login/logout with NextAuth.js
 - User profile management
 - Password change functionality
 
 ✅ **Invoice Management**
+
 - Create, edit, view, and delete invoices
 - PDF generation and download
 - Flag system for important invoices
 - Search and filter functionality
 
 ✅ **Customer Management**
+
 - Complete CRUD operations for customers
 - Customer flagging system
 - Invoice history tracking
 
 ✅ **Dashboard & Analytics**
+
 - Interactive charts with Chart.js
 - Sales overview and performance metrics
 - Recent activity feed
 - Quick action buttons
 
 ✅ **Modern UI/UX**
+
 - Responsive design with Tailwind CSS
 - Material-UI components
 - Dark/light theme support
@@ -34,7 +39,7 @@ A complete invoice management system built with Next.js 15, TypeScript, PostgreS
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - PostgreSQL database (NeonDB recommended)
 - npm or yarn package manager
 
@@ -121,6 +126,7 @@ npm run db:studio    # Open Prisma Studio
 ## Key Features Usage
 
 ### Creating Invoices
+
 1. Navigate to "Create Invoice" from dashboard
 2. Select customer or add new customer
 3. Add line items with HSN codes
@@ -128,18 +134,21 @@ npm run db:studio    # Open Prisma Studio
 5. Generate and download PDF
 
 ### Managing Customers
+
 1. Go to "Customers" section
 2. Add/edit customer information
 3. Track invoice history per customer
 4. Flag important customers
 
 ### Dashboard Analytics
+
 - View sales trends with interactive charts
 - Monitor key performance metrics
 - Track recent activities
 - Quick access to common actions
 
 ### User Management
+
 1. Go to "System Profile"
 2. Update personal information
 3. Change login credentials
@@ -166,15 +175,19 @@ npm run start
 ## Customization
 
 ### Business Information
+
 Update business details in the database `BusinessProfile` table or through the admin interface.
 
 ### Tax Rates
+
 Modify GST rates in the `TaxRate` table based on current regulations.
 
 ### Invoice Templates
+
 Customize PDF generation in `utils/pdfGenerator.ts`.
 
 ### Styling
+
 Modify Tailwind CSS classes and theme in `app/globals.css` and components.
 
 ## Support
@@ -191,4 +204,4 @@ For technical support or customization requests, refer to the codebase documenta
 
 ---
 
-**J.V. Jewellers Invoice Management System** - Professional, Secure, and Feature-Rich
+**SHREE SHIV SHAKTI JEWELLERS Invoice Management System** - Professional, Secure, and Feature-Rich

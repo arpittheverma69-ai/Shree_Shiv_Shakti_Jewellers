@@ -29,7 +29,7 @@ export const generateInvoicePDF = (invoice: InvoiceData) => {
   // Header
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('J.V. JEWELLERS', 105, 20, { align: 'center' });
+  doc.text('SHREE SHIV SHAKTI JEWELLERS', 105, 20, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');

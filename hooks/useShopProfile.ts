@@ -15,7 +15,7 @@ interface ShopProfile {
 }
 
 const defaultProfile: ShopProfile = {
-    shopName: 'J.V. Jewellers',
+    shopName: '',
     gstin: '',
     address: '',
     city: '',
@@ -36,7 +36,7 @@ export const useShopProfile = () => {
         try {
             setLoading(true)
             const response = await fetch('/api/setting/shopprofile')
-            
+
             if (!response.ok) {
                 // If no profile exists, use default
                 if (response.status === 404) {
@@ -45,7 +45,7 @@ export const useShopProfile = () => {
                 }
                 throw new Error('Failed to fetch shop profile')
             }
-            
+
             const data = await response.json()
             setShopProfile(data)
         } catch (err) {

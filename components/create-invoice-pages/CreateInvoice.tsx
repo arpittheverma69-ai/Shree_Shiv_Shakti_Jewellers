@@ -46,7 +46,7 @@ const CreateInvoiceInner: React.FC = () => {
 
                 invoiceForm.setInvoiceData({
                     type: inv.transaction_type || "retail",
-                    mode: "component",
+                    mode: inv.input_mode || "component",
                     invoice_date,
                     invoice_number: inv.invoice_number || "",
                     eway_bill: inv.eway_bill || "",

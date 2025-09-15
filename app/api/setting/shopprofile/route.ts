@@ -22,7 +22,7 @@ export async function GET() {
 
             shopProfile = await prisma.businessProfile.create({
                 data: {
-                    business_name: 'J.V. Jewellers',
+                    business_name: 'SHREE SHIV SHAKTI JEWELLERS',
                     gstin: '27ABCDE1234F1Z5',
                     address: '123 Jewellery Street, Commercial Area',
                     city: 'Mumbai',

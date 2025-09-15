@@ -44,7 +44,7 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [cgstRate, setCgstRate] = useState('1.5');
     const [sgstRate, setSgstRate] = useState('1.5');
-    const [autoRoundoffEnabled, setAutoRoundoffEnabled] = useState(true);
+    const [autoRoundoffEnabled, setAutoRoundoffEnabled] = useState(false);
 
     // Fetch HSN/SAC codes from database
     useEffect(() => {
@@ -120,7 +120,7 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
             // Formula: targetAmount = taxableValue + (taxableValue * taxRate)
             // So: taxableValue = targetAmount / (1 + taxRate)
             const taxableValue = targetAmount / (1 + totalTaxRate);
-            
+
             // Calculate quantity based on taxable value and round to 3 decimal places
             const exactQuantity = taxableValue / rate;
             quantity = parseFloat(exactQuantity.toFixed(3));
@@ -409,12 +409,12 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
 
                                                         // Calculate what the actual total would be with rounded quantity
                                                         const actualTaxableValue = parseFloat(calculatedQuantity) * rateFloat;
-                                                        
+
                                                         // Calculate exact taxes without rounding intermediate values
                                                         const exactCGST = actualTaxableValue * (parseFloat(cgstRate) / 100);
                                                         const exactSGST = actualTaxableValue * (parseFloat(sgstRate) / 100);
                                                         const exactIGST = isIGST ? actualTaxableValue * ((parseFloat(cgstRate) + parseFloat(sgstRate)) / 100) : 0;
-                                                        
+
                                                         const totalExactTax = isIGST ? exactIGST : (exactCGST + exactSGST);
                                                         const actualTotal = actualTaxableValue + totalExactTax;
 
@@ -483,12 +483,12 @@ const LineItemsPage: React.FC<LineItemsPageProps> = ({
 
                                                         // Calculate what the actual total would be with rounded quantity
                                                         const actualTaxableValue = parseFloat(calculatedQuantity) * rate;
-                                                        
+
                                                         // Calculate exact taxes without rounding intermediate values
                                                         const exactCGST = actualTaxableValue * (parseFloat(cgstRate) / 100);
                                                         const exactSGST = actualTaxableValue * (parseFloat(sgstRate) / 100);
                                                         const exactIGST = isIGST ? actualTaxableValue * ((parseFloat(cgstRate) + parseFloat(sgstRate)) / 100) : 0;
-                                                        
+
                                                         const totalExactTax = isIGST ? exactIGST : (exactCGST + exactSGST);
                                                         const actualTotal = actualTaxableValue + totalExactTax;
 

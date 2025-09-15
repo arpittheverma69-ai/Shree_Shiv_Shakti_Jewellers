@@ -22,7 +22,7 @@ interface ShopProfileContextType {
 }
 
 const defaultProfile: ShopProfile = {
-    shopName: 'J.V. Jewellers',
+    shopName: '',
     gstin: '',
     address: '',
     city: '',
