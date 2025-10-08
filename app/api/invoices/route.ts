@@ -1,39 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+type TxType = "retail" | "inter_state" | "outer_state";
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const search = searchParams.get("search") || "";
 
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      deletedAt: null, // Exclude soft-deleted records
-    };
+    // Filtering
+    const txType = (searchParams.get("txType") || "").toLowerCase() as TxType | "";
+    const search = (searchParams.get("search") || "").trim();
+    
+    // Sorting
+    const sortBy = searchParams.get("sortBy") || "date";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
+    
+    // Create dynamic orderBy based on sortBy parameter
+    let orderBy: any = { created_at: "desc" }; // default
+    if (sortBy === "date") {
+      orderBy = { invoice_date: sortOrder };
+    } else if (sortBy === "amount") {
+      orderBy = { total_invoice_value: sortOrder };
+    } else if (sortBy === "customer") {
+      orderBy = { buyer_name: sortOrder };
+    } else {
+      orderBy = { created_at: sortOrder }; // fallback
+    }
 
+    // Optional details (include relations only when asked)
+    const includeDetails = (searchParams.get("include") || "") === "details";
+
+    // Optional cursor pagination (recommended for large datasets)
+    const cursorId = searchParams.get("cursor"); // invoice.id as string
+    const useCursor = searchParams.get("mode") === "cursor"; // choose mode
+
+    const where: any = { deletedAt: null };
+    if (txType) {
+      // Only allow valid values
+      if (txType === "retail" || txType === "inter_state" || txType === "outer_state") {
+        where.transaction_type = txType;
+      }
+    }
     if (search) {
       where.OR = [
         { invoice_number: { contains: search, mode: "insensitive" } },
         { buyer_name: { contains: search, mode: "insensitive" } },
+        // add GSTIN if you search by it often
+        { buyer_gstin: { contains: search, mode: "insensitive" } },
       ];
     }
 
+    // Base select for lightweight list rows
+    const baseSelect = {
+      id: true,
+      invoice_number: true,
+      invoice_date: true,
+      transaction_type: true,
+      buyer_name: true,
+      buyer_gstin: true,
+      total_invoice_value: true,
+      flagged: true,
+      created_at: true,
+    };
+
+    const include = includeDetails
+      ? {
+        customer: true,
+        line_items: {
+          where: { deletedAt: null },
+          include: { taxes: { where: { deletedAt: null } } },
+        },
+      }
+      : undefined;
+
+    if (useCursor) {
+      // Cursor pagination for scalability
+      const take = limit + 1; // fetch one extra to know if next page exists
+
+      const items = await prisma.invoice.findMany({
+        where,
+        select: include ? undefined : baseSelect,
+        include,
+        orderBy: [orderBy, { id: "desc" }],
+        ...(cursorId ? { cursor: { id: Number(cursorId) }, skip: 1 } : {}),
+        take,
+      });
+
+      const hasNext = items.length > limit;
+      const invoices = hasNext ? items.slice(0, -1) : items;
+
+      // Total count is optional for cursor pagination; compute only when needed
+      const total = searchParams.get("withCount") ? await prisma.invoice.count({ where }) : undefined;
+
+      return NextResponse.json({
+        invoices,
+        pageInfo: {
+          hasNext,
+          nextCursor: hasNext ? `${invoices[invoices.length - 1].id}` : null,
+        },
+        total,
+      });
+    }
+
+    // Offset pagination (simple)
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,
-        include: {
-          customer: true,
-          line_items: {
-            where: { deletedAt: null },
-            include: {
-              taxes: { where: { deletedAt: null } },
-            },
-          },
-        },
-        orderBy: { created_at: "desc" },
+        select: include ? undefined : baseSelect,
+        include,
+        orderBy,
         skip,
         take: limit,
       }),
@@ -51,10 +131,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching invoices:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch invoices" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 });
   }
 }
 

@@ -74,6 +74,18 @@ model Invoice {
   roundoff            Decimal?   @db.Decimal(12, 3)
   customer            Customer?  @relation(fields: [buyer_id], references: [id])
   line_items          LineItem[]
+
+  // Indexes for performance optimization
+  @@index([transaction_type])
+  @@index([created_at])
+  @@index([invoice_date])
+  @@index([buyer_name])
+  @@index([buyer_gstin])
+  @@index([flagged])
+  @@index([deletedAt])
+  // Composite index for common filter combinations
+  @@index([transaction_type, created_at(sort: Desc)])
+  @@index([deletedAt, transaction_type, created_at(sort: Desc)])
 }
 
 model LineItem {

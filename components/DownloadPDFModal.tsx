@@ -28,6 +28,7 @@ const mapInvoiceToInvoiceData = (invoice: Invoice): InvoiceData => {
         buyer_name: invoice.buyer_name,
         buyer_address: invoice.buyer_address,
         buyer_gstin: invoice.buyer_gstin || '',
+        buyer_state_id: invoice.customer?.state?.id?.toString() || '',
         buyer_state: invoice.customer?.state?.state_name || '',
         buyer_state_code: invoice.customer?.state?.state_code || invoice.buyer_state_code?.toString() || ''
     }
@@ -146,7 +147,7 @@ export const DownloadPDFModal: React.FC<DownloadPDFModalProps> = ({ invoice, onC
     return (
         <div className="space-y-6">
             {/* Invoice Summary */}
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-black">
+            <div className="p-4 rounded-lg text-black">
                 <h3 className="font-semibold text-lg mb-2">Invoice #{invoice.invoice_number}</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>

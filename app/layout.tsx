@@ -4,6 +4,7 @@ import "./globals.css";
 import { ShopProfileProvider } from '@/contexts/ShopProfileContext';
 import { DynamicHead } from '@/components/DynamicHead';
 import ToastProvider from '@/components/ToastProvider';
+import QueryProvider from '@/components/QueryProvider';
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -36,11 +37,13 @@ export default function RootLayout({
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-                <ShopProfileProvider>
-                    <DynamicHead />
-                    {children}
-                    <ToastProvider />
-                </ShopProfileProvider>
+                <QueryProvider>
+                    <ShopProfileProvider>
+                        <DynamicHead />
+                        {children}
+                        <ToastProvider />
+                    </ShopProfileProvider>
+                </QueryProvider>
             </body>
         </html>
     );
