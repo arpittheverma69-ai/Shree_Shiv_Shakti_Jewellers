@@ -10,52 +10,89 @@ import { DownloadPDFModal } from './DownloadPDFModal';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/utils/requiredFunction';
-// import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-// Invoice categories will be populated with counts dynamically
+// import JSZip from 'jszip';
+import { useQuery } from "@tanstack/react-query";
+
+type TxType = "all" | "retail" | "inter_state" | "outer_state";
+
+// Custom hook for fetching invoices with pagination and filtering
+function useInvoices(page: number, limit: number, txType: TxType, search: string, sortBy: string, sortOrder: string) {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (search.trim()) params.set("search", search.trim());
+    if (txType !== "all") params.set("txType", txType);
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
+
+    return useQuery({
+        queryKey: ["invoices", { page, limit, txType, search: search.trim(), sortBy, sortOrder }],
+        queryFn: async (): Promise<{
+            invoices: Invoice[];
+            pagination: { page: number; limit: number; total: number; pages: number };
+        }> => {
+            const res = await fetch(`/api/invoices?${params.toString()}`);
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Failed to fetch invoices');
+            }
+            return res.json();
+        },
+        staleTime: 30_000, // 30 seconds
+        refetchOnWindowFocus: false,
+    });
+}
 
 const AllInvoices = () => {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedCategory, setSelectedCategory] = useState<TxType>('all');
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
     const [sortBy, setSortBy] = useState<'date' | 'amount' | 'customer'>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [flaggedOnly, setFlaggedOnly] = useState(false);
-    const [loading, setLoading] = React.useState(true);
-    const [invoices, setInvoices] = React.useState<Invoice[]>([]);
     const [selectedInvoice, setSelectedInvoice] = React.useState<Invoice | null>(null);
     const [viewModalOpen, setViewModalOpen] = React.useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = React.useState(false);
-    const [downloadModalOpen, setDownloadModalOpen] = useState(false)
+    const [downloadModalOpen, setDownloadModalOpen] = useState(false);
     const [downloadInvoice, setDownloadInvoice] = useState<Invoice | null>(null);
     const [flaggingInvoices, setFlaggingInvoices] = useState<Set<number>>(new Set());
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-    // Fetch invoices on component mount
+    // Use React Query for data fetching
+    const { data, isLoading, isError, error, refetch } = useInvoices(page, limit, selectedCategory, searchTerm, sortBy, sortOrder);
+    const invoices = data?.invoices ?? [];
+    const pagination = data?.pagination;
+
+    // Reset to page 1 when filters or sorting change
     React.useEffect(() => {
-        fetchInvoices();
-    }, []);
+        setPage(1);
+    }, [selectedCategory, searchTerm, sortBy, sortOrder]);
 
-    const fetchInvoices = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch('/api/invoices');
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch invoices');
-            }
-            const data = await response.json();
-            setInvoices(data.invoices || []);
-        } catch (error: any) {
+    // Show error toast if query fails
+    React.useEffect(() => {
+        if (isError && error) {
             toast.error(error.message, { closeOnClick: true });
-            console.error('Error fetching invoices:', error);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [isError, error]);
 
-    const handleView = (invoice: Invoice) => {
-        setSelectedInvoice(invoice);
+    const handleView = async (invoice: Invoice) => {
+        // If line_items are not loaded, fetch the full invoice details
+        if (!invoice.line_items || invoice.line_items.length === 0) {
+            try {
+                const response = await fetch(`/api/invoices?include=details&search=${invoice.invoice_number}`);
+                const data = await response.json();
+                const fullInvoice = data.invoices.find((inv: Invoice) => inv.id === invoice.id);
+                setSelectedInvoice(fullInvoice || invoice);
+            } catch (error) {
+                console.error('Error fetching invoice details:', error);
+                setSelectedInvoice(invoice);
+            }
+        } else {
+            setSelectedInvoice(invoice);
+        }
         setViewModalOpen(true);
     };
     const handleEdit = (invoice: Invoice) => {
@@ -83,7 +120,7 @@ const AllInvoices = () => {
 
             if (response.ok) {
                 toast.success('Invoice deleted successfully', { closeOnClick: true });
-                fetchInvoices();
+                refetch(); // Refetch data using React Query
                 setDeleteModalOpen(false);
                 setSelectedInvoice(null);
             } else {
@@ -95,55 +132,21 @@ const AllInvoices = () => {
         }
     };
 
-    // Filter and search invoices
-    const filteredInvoices = invoices
-        .filter(invoice => {
-            const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                invoice.buyer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (invoice.buyer_gstin || '').toLowerCase().includes(searchTerm.toLowerCase());
+    // Apply client-side flagged filter only (search and category are handled server-side)
+    const filteredInvoices = invoices.filter(invoice => {
+        const matchesFlagged = !flaggedOnly || invoice.flagged;
+        return matchesFlagged;
+    });
 
-            const matchesCategory = selectedCategory === 'all' || invoice.transaction_type === selectedCategory;
-            const matchesFlagged = !flaggedOnly || invoice.flagged;
-
-            return matchesSearch && matchesCategory && matchesFlagged;
-        })
-        .sort((a, b) => {
-            let aValue: any, bValue: any;
-
-            switch (sortBy) {
-                case 'date':
-                    aValue = new Date(a.invoice_date).getTime();
-                    bValue = new Date(b.invoice_date).getTime();
-                    break;
-                case 'amount':
-                    aValue = a.total_invoice_value;
-                    bValue = b.total_invoice_value;
-                    break;
-                case 'customer':
-                    aValue = a.buyer_name.toLowerCase();
-                    bValue = b.buyer_name.toLowerCase();
-                    break;
-                default:
-                    aValue = a.invoice_date;
-                    bValue = b.invoice_date;
-            }
-
-            if (sortOrder === 'asc') {
-                return aValue > bValue ? 1 : -1;
-            } else {
-                return aValue < bValue ? 1 : -1;
-            }
-        });
-
-    // Calculate statistics
-    const totalInvoices = invoices.length;
+    // Calculate statistics from current page data
+    const totalInvoices = pagination?.total ?? invoices.length;
     const totalRevenue = invoices.reduce((sum, inv) => {
         const invoiceValue = parseFloat(inv.total_invoice_value.toString()) || 0;
         return sum + invoiceValue;
     }, 0);
     const flaggedInvoices = invoices.filter(inv => inv.flagged).length;
 
-    // Calculate transaction type counts
+    // Calculate transaction type counts from current page
     const retailCount = invoices.filter(inv => inv.transaction_type === 'retail').length;
     const interStateCount = invoices.filter(inv => inv.transaction_type === 'inter_state').length;
     const outerStateCount = invoices.filter(inv => inv.transaction_type === 'outer_state').length;
@@ -167,7 +170,7 @@ const AllInvoices = () => {
             });
 
             if (response.ok) {
-                fetchInvoices();
+                refetch(); // Refetch data using React Query
                 toast.success(`Invoice ${invoice.flagged ? 'unflagged' : 'flagged'}`, { closeOnClick: true });
             } else {
                 const errorData = await response.json();
@@ -249,7 +252,7 @@ const AllInvoices = () => {
                             <Package className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
                         </div>
                         <div>
-                            <div className="text-base md:text-lg font-bold text-foreground">{invoices.reduce((sum, inv) => sum + inv.line_items.length, 0)}</div>
+                            <div className="text-base md:text-lg font-bold text-foreground">{invoices.reduce((sum, inv) => sum + (inv.line_items?.length || 0), 0)}</div>
                             <div className="text-xs text-muted-foreground">Total Items</div>
                         </div>
                     </div>
@@ -276,7 +279,7 @@ const AllInvoices = () => {
                         {/* Category Filter */}
                         <select
                             value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            onChange={(e) => setSelectedCategory(e.target.value as TxType)}
                             className="w-full sm:w-auto px-3 md:px-4 py-2 md:py-2 border border-border rounded-[12px] md:rounded-[16px] bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all duration-200 hover:border-primary/50 text-sm md:text-base"
                         >
                             {invoiceCategories.map(category => (
@@ -321,7 +324,7 @@ const AllInvoices = () => {
             {/* Results Count */}
             <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div className="text-xs md:text-sm text-muted-foreground">
-                    {loading ? 'Loading...' : `Showing ${filteredInvoices.length} of ${totalInvoices} invoices`}
+                    {isLoading ? 'Loading...' : `Showing ${filteredInvoices.length} of ${totalInvoices} invoices`}
                 </div>
                 {/* Bulk actions toolbar (desktop) */}
                 <div className="hidden md:flex items-center gap-2">
@@ -329,15 +332,16 @@ const AllInvoices = () => {
                         onClick={async () => {
                             if (selectedIds.size === 0) return;
                             // Optimistic
-                            setInvoices(prev => prev.map(inv => selectedIds.has(inv.id) ? { ...inv, flagged: true } : inv));
+                            // Optimistically update will be handled by React Query
                             try {
                                 await Promise.all(Array.from(selectedIds).map(id => fetch(`/api/invoices/${id}`, {
                                     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ flagged: true })
                                 })));
                                 toast.success('Flagged selected', { closeOnClick: true });
+                                refetch(); // Refresh data
                             } catch {
                                 toast.error('Failed to flag some invoices', { closeOnClick: true });
-                                fetchInvoices();
+                                refetch();
                             }
                         }}
                         className="px-3 py-2 rounded-[10px] bg-muted hover:bg-accent text-sm"
@@ -346,15 +350,16 @@ const AllInvoices = () => {
                     <button
                         onClick={async () => {
                             if (selectedIds.size === 0) return;
-                            setInvoices(prev => prev.map(inv => selectedIds.has(inv.id) ? { ...inv, flagged: false } : inv));
+                            // React Query will handle the update
                             try {
                                 await Promise.all(Array.from(selectedIds).map(id => fetch(`/api/invoices/${id}`, {
                                     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ flagged: false })
                                 })));
                                 toast.success('Unflagged selected', { closeOnClick: true });
+                                refetch(); // Refresh data
                             } catch {
                                 toast.error('Failed to unflag some invoices', { closeOnClick: true });
-                                fetchInvoices();
+                                refetch();
                             }
                         }}
                         className="px-3 py-2 rounded-[10px] bg-muted hover:bg-accent text-sm"
@@ -387,14 +392,15 @@ const AllInvoices = () => {
                             if (!ok) return;
                             const ids = Array.from(selectedIds);
                             const prev = invoices;
-                            setInvoices(prev.filter(inv => !selectedIds.has(inv.id)));
+                            // React Query will handle the update
                             try {
                                 await Promise.all(ids.map(id => fetch(`/api/invoices/${id}`, { method: 'DELETE' })));
                                 toast.success('Deleted selected invoices', { closeOnClick: true });
                                 setSelectedIds(new Set());
+                                refetch(); // Refresh data
                             } catch {
                                 toast.error('Failed to delete selected', { closeOnClick: true });
-                                setInvoices(prev);
+                                refetch(); // Refresh data on error
                             }
                         }}
                         className="px-3 py-2 rounded-[10px] bg-red-600 text-white hover:bg-red-700 text-sm"
@@ -402,12 +408,32 @@ const AllInvoices = () => {
                     >Delete</button>
                 </div>
             </div>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-center gap-4 mb-6">
+                <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-4 py-2 rounded-[12px] bg-muted hover:bg-accent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Previous
+                </button>
+                <span className="text-sm text-muted-foreground">
+                    Page {pagination?.page ?? 1} of {pagination?.pages ?? 1}
+                </span>
+                <button
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={!pagination || page >= pagination.pages}
+                    className="px-4 py-2 rounded-[12px] bg-muted hover:bg-accent text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Next
+                </button>
+            </div>
 
 
 
             {/* Mobile Invoice Cards */}
             <div className="block md:hidden">
-                {loading ? (
+                {isLoading ? (
                     <div className="text-center py-12">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -472,7 +498,7 @@ const AllInvoices = () => {
                                     </div>
                                     <div>
                                         <div className="text-muted-foreground">Items</div>
-                                        <div className="text-foreground">{invoice.line_items.length}</div>
+                                        <div className="text-foreground">{invoice.line_items?.length || 0}</div>
                                     </div>
                                 </div>
 
@@ -546,7 +572,7 @@ const AllInvoices = () => {
 
                 {/* Table Body */}
                 <div className="divide-y divide-border">
-                    {loading ? (
+                    {isLoading ? (
                         <div className="text-center py-16">
                             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -623,7 +649,7 @@ const AllInvoices = () => {
 
                                         {/* Items */}
                                         <div className="col-span-1">
-                                            <div className="text-sm text-foreground">{invoice.line_items.length}</div>
+                                            <div className="text-sm text-foreground">{invoice.line_items?.length || 0}</div>
                                         </div>
 
                                         {/* Amount */}
@@ -721,7 +747,7 @@ const AllInvoices = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {selectedInvoice.line_items.map((item, index) => (
+                                        {(selectedInvoice.line_items || []).map((item, index) => (
                                             <tr key={index}>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {item.description}
